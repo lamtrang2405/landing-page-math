@@ -1776,6 +1776,42 @@ a:hover {
   }
 }
 
+/* Fake signup notification (desktop only) */
+.fake-signup-noti {
+  position: fixed;
+  right: 20px;
+  bottom: 22px;
+  z-index: 130;
+  width: min(360px, calc(100vw - 40px));
+  padding: 0.8rem 0.95rem;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.2);
+  color: #0f172a;
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+  transition: opacity 0.28s ease, transform 0.28s ease;
+}
+
+.fake-signup-noti.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.fake-signup-noti-text {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 1024px) {
+  .fake-signup-noti {
+    display: none;
+  }
+}
+
   </style>
   <script type="application/ld+json">
     {
@@ -2458,6 +2494,10 @@ a:hover {
     </div>
   </footer>
 
+  <div class="fake-signup-noti" id="fake-signup-noti" aria-live="polite" aria-atomic="true">
+    <p class="fake-signup-noti-text"></p>
+  </div>
+
   <script>
 (function () {
   "use strict";
@@ -2745,6 +2785,54 @@ a:hover {
     });
   }
 
+  function initFakeSignupNotification() {
+    var noti = document.getElementById("fake-signup-noti");
+    if (!noti) return;
+    if (window.matchMedia && window.matchMedia("(max-width: 1024px)").matches) return;
+
+    var textEl = noti.querySelector(".fake-signup-noti-text");
+    if (!textEl) return;
+
+    var names = [
+      "Nguyễn Thị C",
+      "Trần Minh A",
+      "Lê Hoàng B",
+      "Phạm Gia Hân",
+      "Vũ Tuấn K",
+      "Đỗ Ngọc Anh",
+    ];
+    var packages = ["Cơ bản", "Tiêu chuẩn", "VIP"];
+    var hideTimer = null;
+    var nextShowTimer = null;
+
+    function pickRandom(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function randomDelay(minMs, maxMs) {
+      return Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+    }
+
+    function showNotification() {
+      textEl.textContent =
+        "Học sinh " +
+        pickRandom(names) +
+        " đã đăng ký thành công gói " +
+        pickRandom(packages) +
+        ".";
+      noti.classList.add("is-visible");
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(function () {
+        noti.classList.remove("is-visible");
+      }, 5000);
+      clearTimeout(nextShowTimer);
+      nextShowTimer = setTimeout(showNotification, randomDelay(20000, 30000));
+    }
+
+    nextShowTimer = setTimeout(showNotification, randomDelay(5000, 10000));
+  }
+
+  initFakeSignupNotification();
   initTestimonialCarousels();
 })();
 
