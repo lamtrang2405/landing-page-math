@@ -15,6 +15,16 @@
   <meta property="og:locale" content="vi_VN" />
   <meta name="twitter:card" content="summary" />
   <meta name="theme-color" content="#2563eb" />
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-H83157JYJ6"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() {
+      dataLayer.push(arguments);
+    }
+    gtag("js", new Date());
+    gtag("config", "G-H83157JYJ6");
+  </script>
   <style>
 /* VTMathEdu — landing for math courses */
 :root {
@@ -2502,6 +2512,107 @@ a:hover {
 (function () {
   "use strict";
 
+  function trackEvent(eventName, params) {
+    if (typeof window.gtag === "function") {
+      window.gtag("event", eventName, params || {});
+    }
+  }
+
+  function initGaTracking() {
+    trackEvent("site_ready", {
+      page_title: document.title,
+      page_location: window.location.href,
+      page_path: window.location.pathname,
+    });
+
+    var activeMs = 0;
+    var tickStart = Date.now();
+    var sentTimeBuckets = {};
+    var sentScrollDepths = {};
+    var scrollDepthMarks = [25, 50, 75, 90];
+
+    function flushActiveTime() {
+      if (!document.hidden) {
+        activeMs += Date.now() - tickStart;
+      }
+      tickStart = Date.now();
+    }
+
+    function maybeSendTimeOnTab() {
+      var seconds = Math.floor(activeMs / 1000);
+      var buckets = [15, 30, 60, 120];
+      buckets.forEach(function (bucket) {
+        if (seconds >= bucket && !sentTimeBuckets[bucket]) {
+          sentTimeBuckets[bucket] = true;
+          trackEvent("time_on_tab", { seconds: bucket });
+        }
+      });
+    }
+
+    document.addEventListener("visibilitychange", function () {
+      flushActiveTime();
+      maybeSendTimeOnTab();
+    });
+
+    window.addEventListener("beforeunload", function () {
+      flushActiveTime();
+      maybeSendTimeOnTab();
+    });
+
+    window.addEventListener(
+      "scroll",
+      function () {
+        var doc = document.documentElement;
+        var scrollable = Math.max(doc.scrollHeight - window.innerHeight, 1);
+        var ratio = (window.scrollY / scrollable) * 100;
+        scrollDepthMarks.forEach(function (mark) {
+          if (ratio >= mark && !sentScrollDepths[mark]) {
+            sentScrollDepths[mark] = true;
+            trackEvent("scroll_depth", { percent: mark });
+          }
+        });
+      },
+      { passive: true }
+    );
+
+    document.querySelectorAll('a[href="#dang-ky"], a[href="#bang-gia"]').forEach(function (link) {
+      link.addEventListener("click", function () {
+        trackEvent("pricing_cta_click", {
+          target: link.getAttribute("href") || "",
+          label: (link.textContent || "").trim(),
+        });
+      });
+    });
+
+    document.querySelectorAll('a[href*="zalo.me"]').forEach(function (link) {
+      link.addEventListener("click", function () {
+        trackEvent("zalo_support_click", {
+          target: link.getAttribute("href") || "",
+        });
+      });
+    });
+
+    document.querySelectorAll("[data-course-tab-index]").forEach(function (tabLink) {
+      tabLink.addEventListener("click", function () {
+        trackEvent("analysis_tab_click", {
+          tab_index: tabLink.getAttribute("data-course-tab-index") || "",
+          tab_root: tabLink.getAttribute("data-tabs-root") || "",
+        });
+      });
+    });
+  }
+
+  window.trackPurchaseSuccess = function (amount, plan, method) {
+    trackEvent("purchase_success", {
+      value: typeof amount === "number" ? amount : Number(amount) || 0,
+      currency: "VND",
+      plan: plan || "",
+      payment_method: method || "",
+    });
+  };
+
+  initGaTracking();
+
   var nav = document.getElementById("main-nav");
   var toggle = document.querySelector(".nav-toggle");
 
@@ -2605,6 +2716,10 @@ a:hover {
     tabs.forEach(function (tab, i) {
       tab.addEventListener("click", function () {
         activate(i);
+        trackEvent("tab_view", {
+          tab_index: i,
+          tab_label: (tab.textContent || "").trim(),
+        });
       });
       tab.addEventListener("keydown", function (e) {
         var next = i;
