@@ -15,6 +15,7 @@
   <meta property="og:locale" content="vi_VN" />
   <meta name="twitter:card" content="summary" />
   <meta name="theme-color" content="#2563eb" />
+  <link rel="icon" type="image/png" href="images/favicon.png" />
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-H83157JYJ6"></script>
   <script>
@@ -2514,15 +2515,23 @@ a:hover {
 
   function trackEvent(eventName, params) {
     if (typeof window.gtag === "function") {
-      window.gtag("event", eventName, params || {});
+      window.gtag(
+        "event",
+        eventName,
+        Object.assign(
+          {
+            page_title: document.title,
+            page_path: window.location.pathname,
+          },
+          params || {}
+        )
+      );
     }
   }
 
   function initGaTracking() {
-    trackEvent("site_ready", {
-      page_title: document.title,
+    trackEvent("page_ready", {
       page_location: window.location.href,
-      page_path: window.location.pathname,
     });
 
     var activeMs = 0;
@@ -2544,7 +2553,7 @@ a:hover {
       buckets.forEach(function (bucket) {
         if (seconds >= bucket && !sentTimeBuckets[bucket]) {
           sentTimeBuckets[bucket] = true;
-          trackEvent("time_on_tab", { seconds: bucket });
+          trackEvent("engagement_time_bucket", { seconds: bucket });
         }
       });
     }
@@ -2569,34 +2578,108 @@ a:hover {
           if (ratio >= mark && !sentScrollDepths[mark]) {
             sentScrollDepths[mark] = true;
             trackEvent("scroll_depth", { percent: mark });
+            if (mark === 90) {
+              trackEvent("scroll_90", { percent: 90 });
+            }
           }
         });
       },
       { passive: true }
     );
 
-    document.querySelectorAll('a[href="#dang-ky"], a[href="#bang-gia"]').forEach(function (link) {
-      link.addEventListener("click", function () {
-        trackEvent("pricing_cta_click", {
-          target: link.getAttribute("href") || "",
-          label: (link.textContent || "").trim(),
-        });
-      });
-    });
-
-    document.querySelectorAll('a[href*="zalo.me"]').forEach(function (link) {
-      link.addEventListener("click", function () {
-        trackEvent("zalo_support_click", {
-          target: link.getAttribute("href") || "",
-        });
-      });
-    });
-
     document.querySelectorAll("[data-course-tab-index]").forEach(function (tabLink) {
       tabLink.addEventListener("click", function () {
-        trackEvent("analysis_tab_click", {
+        trackEvent("tab_click", {
           tab_index: tabLink.getAttribute("data-course-tab-index") || "",
           tab_root: tabLink.getAttribute("data-tabs-root") || "",
+        });
+      });
+    });
+
+    function getSectionName(el) {
+      var section = el.closest("section[id], header[id], footer[id], main[id]");
+      if (!section) return "unknown";
+      return section.getAttribute("id") || "unknown";
+    }
+
+    function getButtonType(el, href, label) {
+      var v = (href + " " + label + " " + (el.className || "")).toLowerCase();
+      if (
+        v.indexOf("messenger") !== -1 ||
+        v.indexOf("zalo") !== -1 ||
+        v.indexOf("facebook.com") !== -1
+      ) {
+        return "message";
+      }
+      if (
+        href.indexOf("tel:") === 0 ||
+        href.indexOf("mailto:") === 0 ||
+        v.indexOf("liên hệ") !== -1 ||
+        v.indexOf("lien he") !== -1 ||
+        v.indexOf("tư vấn") !== -1 ||
+        v.indexOf("tu van") !== -1
+      ) {
+        return "contact";
+      }
+      return "other";
+    }
+
+    function getDestination(href) {
+      if (!href) return "";
+      var v = href.toLowerCase();
+      if (v.indexOf("zalo.me") !== -1) return "zalo";
+      if (v.indexOf("facebook.com") !== -1 || v.indexOf("m.me") !== -1) return "facebook";
+      if (v.indexOf("tel:") === 0) return "phone";
+      if (v.indexOf("mailto:") === 0) return "email";
+      return href;
+    }
+
+    document
+      .querySelectorAll(
+        "a.btn, .btn-messenger, .btn-zalo, a[href^='tel:'], a[href^='mailto:'], a[href*='facebook.com'], a[href*='zalo.me']"
+      )
+      .forEach(function (link) {
+        link.addEventListener("click", function () {
+          var href = link.getAttribute("href") || "";
+          var label = (link.textContent || "").replace(/\s+/g, " ").trim();
+          var destination = getDestination(href);
+          var section = getSectionName(link);
+          if (destination === "zalo") {
+            trackEvent("zalo_click", { button_text: label, section: section });
+            trackEvent("form_submit", {
+              form_name: "contact_chat",
+              method: "zalo",
+              source: section,
+            });
+            return;
+          }
+          if (destination === "phone") {
+            trackEvent("phone_click", { button_text: label, section: section });
+            return;
+          }
+          if (destination === "facebook") {
+            trackEvent("form_submit", {
+              form_name: "contact_chat",
+              method: "messenger",
+              source: section,
+            });
+            return;
+          }
+          trackEvent("cta_click", {
+            button_text: label,
+            button_type: getButtonType(link, href, label),
+            destination: destination,
+            section: section,
+          });
+        });
+      });
+
+    document.querySelectorAll("form").forEach(function (form) {
+      form.addEventListener("submit", function () {
+        trackEvent("form_submit", {
+          form_name: form.getAttribute("id") || form.getAttribute("name") || "unknown_form",
+          source: getSectionName(form),
+          method: "native_submit",
         });
       });
     });
@@ -2716,7 +2799,7 @@ a:hover {
     tabs.forEach(function (tab, i) {
       tab.addEventListener("click", function () {
         activate(i);
-        trackEvent("tab_view", {
+        trackEvent("tab_click", {
           tab_index: i,
           tab_label: (tab.textContent || "").trim(),
         });

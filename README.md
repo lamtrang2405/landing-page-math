@@ -25,3 +25,7 @@ Nếu remote đã tồn tại: `git remote set-url origin https://github.com/lam
 3. Sau vài phút: `https://lamtrang2405.github.io/landing-page-math/`
 
 File `.nojekyll` giúp GitHub không xử lý site qua Jekyll.
+
+## Tracking
+
+- Tài liệu tracking GA4: [tracking-spec.md](tracking-spec.md)
